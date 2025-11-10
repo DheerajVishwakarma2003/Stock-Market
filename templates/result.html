@@ -1,0 +1,159 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Prediction Results - {{ stock_symbol }}</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <h1 class="logo">📈 StockYatra</h1>
+            <ul class="nav-links">
+                <li><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
+                <li><a href="{{ url_for('news') }}">News</a></li>
+                {% if session.get('is_admin') %}
+                    <li><a href="{{ url_for('admin') }}">Admin</a></li>
+                {% endif %}
+                <li><a href="{{ url_for('profile') }}">Profile</a></li>
+                <li><a href="{{ url_for('logout') }}">Logout</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container result-container">
+        <div class="result-header">
+            <h1>Prediction Results for {{ stock_symbol }}</h1>
+            <a href="{{ url_for('dashboard') }}" class="btn btn-secondary">← Back to Dashboard</a>
+        </div>
+
+        <div class="result-grid">
+            <div class="result-card best-model-card">
+                <h2>🏆 Best Performing Model</h2>
+                <div class="best-model-name">{{ result.best_model }}</div>
+                <p>This model showed the best performance on test data</p>
+            </div>
+
+            <div class="result-card">
+                <h3>📈 Model Comparison</h3>
+                <div class="model-metrics">
+                    {% for model_name, metrics in result.metrics.items() %}
+                        <div class="metric-row {% if model_name == result.best_model %}best{% endif %}">
+                            <strong>{{ model_name }}</strong>
+                            <div class="metric-values">
+                                <span>RMSE: {{ "%.6f"|format(metrics.test_rmse) }}</span>
+                                <span>MAE: {{ "%.6f"|format(metrics.test_mae) }}</span>
+                                <span>R²: {{ "%.4f"|format(metrics.test_r2) }}</span>
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <div class="chart-section">
+            <h2>📊 Actual vs Predicted Prices</h2>
+            <div class="chart-container">
+                <img src="{{ url_for('static', filename=plot_url.replace('static/', '')) }}" 
+                     alt="Stock Prediction Chart" class="prediction-chart">
+            </div>
+            <p class="chart-note">
+                The chart above compares actual stock prices (black line) with predictions 
+                from all three models. Lower RMSE values indicate better prediction accuracy.
+            </p>
+        </div>
+
+        <div class="chart-section">
+            <h2>🔮 AI Price Predictions (Next 7 Days)</h2>
+            <div class="chart-container">
+                <img src="{{ url_for('static', filename='plots/' + stock_symbol + '_future_7days.png') }}" 
+                     alt="7-Day Future Prediction Chart" class="prediction-chart"
+                     onerror="this.parentElement.innerHTML='<p class=\'chart-note\'>Future prediction chart will be generated...</p>'">
+            </div>
+            <p class="chart-note">
+                This chart shows the predicted stock price trend for the next 7 trading days 
+                using the {{ result.best_model }} model. Predictions are based on historical patterns.
+            </p>
+            
+            <div class="future-predictions">
+                <h3>📅 Detailed Day-by-Day Predictions</h3>
+                
+                <!-- Prediction Table -->
+                <div class="prediction-table-container">
+                    <table class="prediction-table">
+                        <thead>
+                            <tr>
+                                <th>Day</th>
+                                <th>Date</th>
+                                <th>Predicted Price</th>
+                                <th>Change from Previous</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for i in range(7) %}
+                                {% set prev_price = result.future_predictions[i-1] if i > 0 else result.future_predictions[0] %}
+                                {% set current_price = result.future_predictions[i] %}
+                                {% set change = current_price - prev_price if i > 0 else 0 %}
+                                {% set change_pct = (change / prev_price * 100) if i > 0 and prev_price != 0 else 0 %}
+                                <tr>
+                                    <td><strong>Day {{ i + 1 }}</strong></td>
+                                    <td>{{ result.future_dates[i] }}</td>
+                                    <td class="price-cell">₹{{ "%.2f"|format(current_price) }}</td>
+                                    <td class="change-cell {% if change > 0 %}positive{% elif change < 0 %}negative{% endif %}">
+                                        {% if i > 0 %}
+                                            {{ "%+.2f"|format(change) }} ({{ "%+.2f"|format(change_pct) }}%)
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+                
+                <!-- Prediction Cards -->
+                <h3 style="margin-top: 2rem;">📊 Quick View</h3>
+                <div class="prediction-timeline">
+                    {% for i in range(7) %}
+                        <div class="prediction-day">
+                            <div class="day-label">Day {{ i + 1 }}</div>
+                            <div class="day-date">{{ result.future_dates[i] }}</div>
+                            <div class="day-value">₹{{ "%.2f"|format(result.future_predictions[i]) }}</div>
+                        </div>
+                    {% endfor %}
+                </div>
+            </div>
+        </div>
+
+        <div class="metrics-explanation">
+            <h3>Understanding the Metrics</h3>
+            <div class="explanation-grid">
+                <div class="explanation-card">
+                    <h4>RMSE (Root Mean Square Error)</h4>
+                    <p>Measures the average magnitude of prediction errors. Lower is better.</p>
+                </div>
+                <div class="explanation-card">
+                    <h4>MAE (Mean Absolute Error)</h4>
+                    <p>Average absolute difference between predicted and actual values. Lower is better.</p>
+                </div>
+                <div class="explanation-card">
+                    <h4>R² Score</h4>
+                    <p>Indicates how well the model fits the data. Closer to 1.0 is better.</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="action-buttons">
+            <a href="{{ url_for('dashboard') }}" class="btn btn-primary">Make Another Prediction</a>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2025 Stock Market Prediction System. MCA Project.</p>
+        </div>
+    </footer>
+</body>
+</html>

@@ -1,0 +1,370 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Market News - Stock Prediction</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <h1 class="logo">📈 StockYatra</h1>
+            <ul class="nav-links">
+                {% if session.user_id %}
+                    <li><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
+                    <li><a href="{{ url_for('watchlist') }}">Watchlist</a></li>
+                    <li><a href="{{ url_for('news') }}" class="active">News</a></li>
+                    {% if session.get('is_admin') %}
+                        <li><a href="{{ url_for('admin') }}">Admin</a></li>
+                    {% endif %}
+                    <li><a href="{{ url_for('profile') }}">Profile</a></li>
+                    <li><a href="{{ url_for('logout') }}">Logout</a></li>
+                {% else %}
+                    <li><a href="{{ url_for('index') }}">Home</a></li>
+                    <li><a href="{{ url_for('news') }}" class="active">News</a></li>
+                    <li><a href="{{ url_for('login') }}">Login</a></li>
+                    <li><a href="{{ url_for('register') }}">Register</a></li>
+                {% endif %}
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container news-container">
+        <div class="news-header">
+            <h1>📰 Market News & Updates</h1>
+            <p>Latest news and insights from Indian stock markets</p>
+            <div class="last-updated">
+                Last updated: <span id="lastUpdated">Just now</span>
+                <button class="btn btn-sm" onclick="location.reload()">🔄 Refresh</button>
+            </div>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Market Summary Section -->
+        <section class="market-summary-section">
+            <h2>📊 Market Overview</h2>
+            <div class="market-indices">
+                {% for index_name, data in market_summary.items() %}
+                    <div class="index-card {% if data.is_positive %}positive{% else %}negative{% endif %}">
+                        <div class="index-name">{{ index_name }}</div>
+                        <div class="index-value">{{ data.value }}</div>
+                        <div class="index-change">
+                            <span class="change-arrow">
+                                {% if data.is_positive %}▲{% else %}▼{% endif %}
+                            </span>
+                            {{ data.change }} ({{ data.change_pct }})
+                        </div>
+                    </div>
+                {% endfor %}
+            </div>
+        </section>
+
+        <!-- Trending Stocks Section -->
+        <section class="trending-section">
+            <h2>🔥 Trending Stocks</h2>
+            <div class="trending-grid">
+                {% for stock in trending_stocks %}
+                    <div class="trending-card">
+                        <div class="stock-symbol">{{ stock.symbol }}</div>
+                        <div class="stock-name">{{ stock.name }}</div>
+                        <div class="stock-price">{{ stock.price }}</div>
+                        <div class="stock-change {% if stock.change_value >= 0 %}positive{% else %}negative{% endif %}">
+                            {{ stock.change }}
+                        </div>
+                        {% if session.user_id %}
+                            <button class="btn-add-watchlist" onclick="addToWatchlist('{{ stock.symbol }}', '{{ stock.name }}')" title="Add to Watchlist">
+                                ⭐ Add
+                            </button>
+                        {% endif %}
+                    </div>
+                {% endfor %}
+            </div>
+        </section>
+
+        <div class="news-layout">
+            <!-- Main News Column -->
+            <div class="news-main">
+                <section class="news-section">
+                    <h2>📢 Latest Market News</h2>
+                    {% if market_news %}
+                        <div class="news-list">
+                            {% for article in market_news %}
+                                <article class="news-article">
+                                    {% if article.thumbnail %}
+                                        <div class="news-thumbnail">
+                                            <img src="{{ article.thumbnail }}" alt="{{ article.title }}" 
+                                                 onerror="this.style.display='none'">
+                                        </div>
+                                    {% endif %}
+                                    <div class="news-content">
+                                        <h3 class="news-title">
+                                            <a href="{{ article.link }}" target="_blank">
+                                                {{ article.title }}
+                                            </a>
+                                        </h3>
+                                        <div class="news-meta">
+                                            <span class="news-source">{{ article.publisher }}</span>
+                                            <span class="news-divider">•</span>
+                                            <span class="news-time">{{ article.published }}</span>
+                                            {% if article.category %}
+                                                <span class="news-divider">•</span>
+                                                <span class="news-category">{{ article.category }}</span>
+                                            {% endif %}
+                                        </div>
+                                    </div>
+                                </article>
+                            {% endfor %}
+                        </div>
+                    {% else %}
+                        <div class="empty-news">
+                            <p>📰 No news articles available at the moment.</p>
+                            <p>Please try refreshing the page.</p>
+                        </div>
+                    {% endif %}
+                </section>
+            </div>
+
+            <!-- Sidebar -->
+            <aside class="news-sidebar">
+                <!-- Quick Access to Watchlist -->
+                {% if session.user_id %}
+                <section class="sidebar-section watchlist-quick-access">
+                    <h3>⭐ My Watchlist</h3>
+                    <a href="{{ url_for('watchlist') }}" class="btn btn-primary btn-full">
+                        View My Watchlist
+                    </a>
+                    <p class="sidebar-hint">Track your favorite stocks and get instant updates</p>
+                </section>
+                {% endif %}
+
+                <!-- Economic Calendar -->
+                <section class="sidebar-section">
+                    <h3>📅 Economic Calendar</h3>
+                    <div class="calendar-list">
+                        {% for event in economic_calendar %}
+                            <div class="calendar-item">
+                                <div class="calendar-date">{{ event.date }}</div>
+                                <div class="calendar-event">
+                                    <strong>{{ event.event }}</strong>
+                                    <span class="importance-badge importance-{{ event.importance.lower() }}">
+                                        {{ event.importance }}
+                                    </span>
+                                </div>
+                                <div class="calendar-category">{{ event.category }}</div>
+                            </div>
+                        {% endfor %}
+                    </div>
+                </section>
+
+                <!-- Quick Stock Search -->
+                <section class="sidebar-section">
+                    <h3>🔍 Stock News Search</h3>
+                    <form class="stock-search-form" onsubmit="searchStockNews(event)">
+                        <input type="text" id="stockSearchInput" 
+                               placeholder="Enter stock symbol (e.g., RELIANCE.NS)" 
+                               class="search-input">
+                        <button type="submit" class="btn btn-primary btn-sm">Search</button>
+                    </form>
+                    <div id="stockNewsResults" class="stock-news-results"></div>
+                </section>
+
+                <!-- Market Tips -->
+                <section class="sidebar-section tips-section">
+                    <h3>💡 Quick Tips</h3>
+                    <ul class="tips-list">
+                        <li>📊 Check market indices before making decisions</li>
+                        <li>📰 Stay updated with latest news</li>
+                        <li>🔍 Research before investing</li>
+                        <li>💰 Diversify your portfolio</li>
+                        <li>⚠️ Never invest more than you can afford to lose</li>
+                    </ul>
+                </section>
+
+                <!-- Popular Sectors -->
+                <section class="sidebar-section">
+                    <h3>🏢 Popular Sectors</h3>
+                    <div class="sector-tags">
+                        <span class="sector-tag">Banking</span>
+                        <span class="sector-tag">IT</span>
+                        <span class="sector-tag">Energy</span>
+                        <span class="sector-tag">FMCG</span>
+                        <span class="sector-tag">Pharma</span>
+                        <span class="sector-tag">Auto</span>
+                    </div>
+                </section>
+            </aside>
+        </div>
+
+        <!-- Disclaimer -->
+        <div class="news-disclaimer">
+            <strong>⚠️ Disclaimer:</strong> The news and information provided here are for educational and informational purposes only. 
+            This is not financial advice. Always do your own research and consult with a qualified financial advisor before making 
+            investment decisions.
+        </div>
+    </div>
+
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2025 Stock Market Prediction System. MCA Project.</p>
+        </div>
+    </footer>
+
+    <script>
+        // Add to watchlist functionality
+        async function addToWatchlist(symbol, name) {
+            if (!symbol) {
+                alert('Invalid stock symbol');
+                return;
+            }
+            
+            try {
+                const formData = new FormData();
+                formData.append('stock_symbol', symbol);
+                
+                const response = await fetch('/watchlist/add', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert(`✅ ${symbol} added to your watchlist!`);
+                } else {
+                    alert(data.message || 'Failed to add stock to watchlist');
+                }
+            } catch (error) {
+                alert('Error adding to watchlist: ' + error.message);
+            }
+        }
+
+        // Stock news search functionality
+        async function searchStockNews(event) {
+            event.preventDefault();
+            
+            const input = document.getElementById('stockSearchInput');
+            const resultsDiv = document.getElementById('stockNewsResults');
+            const symbol = input.value.trim().toUpperCase();
+            
+            if (!symbol) {
+                alert('Please enter a stock symbol');
+                return;
+            }
+            
+            resultsDiv.innerHTML = '<div class="loading">Loading news...</div>';
+            
+            try {
+                const response = await fetch(`/api/stock-news/${symbol}`);
+                const data = await response.json();
+                
+                if (data.success && data.news.length > 0) {
+                    let html = '<div class="stock-news-list">';
+                    data.news.forEach(article => {
+                        html += `
+                            <div class="mini-news-item">
+                                <a href="${article.link}" target="_blank">
+                                    <strong>${article.title}</strong>
+                                </a>
+                                <div class="mini-news-meta">
+                                    ${article.publisher} • ${article.published}
+                                </div>
+                            </div>
+                        `;
+                    });
+                    html += '</div>';
+                    resultsDiv.innerHTML = html;
+                } else {
+                    resultsDiv.innerHTML = '<div class="no-results">No news found for this stock.</div>';
+                }
+            } catch (error) {
+                resultsDiv.innerHTML = '<div class="error">Error loading news. Please try again.</div>';
+            }
+        }
+
+        // Auto-update last updated time
+        setInterval(() => {
+            const now = new Date();
+            document.getElementById('lastUpdated').textContent = 
+                now.toLocaleString('en-IN', { timeZone: 'Asia/Kolkata' }) + ' IST';
+        }, 60000); // Update every minute
+    </script>
+
+    <style>
+        /* Additional styles for watchlist quick access and add buttons */
+        .watchlist-quick-access {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            margin-bottom: 1.5rem;
+        }
+
+        .watchlist-quick-access h3 {
+            color: white;
+            margin-bottom: 1rem;
+        }
+
+        .watchlist-quick-access .btn-full {
+            width: 100%;
+            background: white;
+            color: #667eea;
+            font-weight: 600;
+            padding: 0.75rem;
+            border: none;
+            border-radius: 8px;
+            cursor: pointer;
+            transition: all 0.3s ease;
+        }
+
+        .watchlist-quick-access .btn-full:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 4px 12px rgba(0,0,0,0.2);
+        }
+
+        .sidebar-hint {
+            margin-top: 0.75rem;
+            font-size: 0.85rem;
+            opacity: 0.9;
+        }
+
+        .btn-add-watchlist {
+            margin-top: 0.75rem;
+            padding: 0.5rem 1rem;
+            background: #f59e0b;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            cursor: pointer;
+            font-size: 0.85rem;
+            font-weight: 600;
+            transition: all 0.3s ease;
+            width: 100%;
+        }
+
+        .btn-add-watchlist:hover {
+            background: #d97706;
+            transform: translateY(-2px);
+            box-shadow: 0 4px 8px rgba(245, 158, 11, 0.3);
+        }
+
+        .trending-card {
+            position: relative;
+        }
+
+        /* Responsive adjustments */
+        @media (max-width: 768px) {
+            .watchlist-quick-access {
+                padding: 1rem;
+            }
+        }
+    </style>
+</body>
+</html>

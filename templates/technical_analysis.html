@@ -1,0 +1,461 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Technical Scanner - StockYatra</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <style>
+        .scanner-container {
+            max-width: 1400px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+
+        .scanner-header {
+            text-align: center;
+            margin-bottom: 3rem;
+            padding: 2rem;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+            border-radius: 16px;
+        }
+
+        .scanner-header h1 {
+            margin: 0 0 0.5rem 0;
+            font-size: 2.5rem;
+        }
+
+        .scanner-table-container {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            overflow-x: auto;
+        }
+
+        .scanner-table {
+            width: 100%;
+            border-collapse: collapse;
+        }
+
+        .scanner-table thead {
+            background: #f7fafc;
+        }
+
+        .scanner-table th {
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+            color: #4a5568;
+            border-bottom: 2px solid #e2e8f0;
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .scanner-table th:hover {
+            background: #edf2f7;
+        }
+
+        .scanner-table td {
+            padding: 1rem;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .scanner-table tbody tr:hover {
+            background: #f7fafc;
+        }
+
+        .stock-symbol {
+            font-weight: 700;
+            color: #1a202c;
+            font-size: 1.1rem;
+        }
+
+        .trend-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .trend-uptrend {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .trend-downtrend {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .trend-sideways {
+            background: #e2e8f0;
+            color: #4a5568;
+        }
+
+        .signal-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .signal-overbought {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .signal-oversold {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .signal-neutral {
+            background: #e2e8f0;
+            color: #4a5568;
+        }
+
+        .signal-buy {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .signal-sell {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .signal-hold {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .recommendation-card {
+            padding: 0.5rem 1rem;
+            border-radius: 8px;
+            font-weight: 600;
+            text-align: center;
+        }
+
+        .rec-strong-buy {
+            background: #10b981;
+            color: white;
+        }
+
+        .rec-buy {
+            background: #34d399;
+            color: white;
+        }
+
+        .rec-hold {
+            background: #f59e0b;
+            color: white;
+        }
+
+        .rec-sell {
+            background: #f87171;
+            color: white;
+        }
+
+        .rec-strong-sell {
+            background: #ef4444;
+            color: white;
+        }
+
+        .confidence-bar {
+            width: 100px;
+            height: 8px;
+            background: #e2e8f0;
+            border-radius: 4px;
+            overflow: hidden;
+            display: inline-block;
+            vertical-align: middle;
+            margin-left: 0.5rem;
+        }
+
+        .confidence-fill {
+            height: 100%;
+            background: #10b981;
+        }
+
+        .view-details-btn {
+            padding: 0.5rem 1rem;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+            text-decoration: none;
+            display: inline-block;
+        }
+
+        .view-details-btn:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+        }
+
+        .loading {
+            text-align: center;
+            padding: 3rem;
+            color: #718096;
+        }
+
+        .loading-spinner {
+            display: inline-block;
+            width: 40px;
+            height: 40px;
+            border: 4px solid #e2e8f0;
+            border-top-color: #667eea;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+        }
+
+        @keyframes spin {
+            to { transform: rotate(360deg); }
+        }
+
+        .filter-section {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+        }
+
+        .filter-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 1rem;
+        }
+
+        .filter-item {
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .filter-item input[type="checkbox"] {
+            width: 18px;
+            height: 18px;
+            cursor: pointer;
+        }
+
+        .filter-item label {
+            cursor: pointer;
+            user-select: none;
+        }
+
+        .stats-summary {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(150px, 1fr));
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-box {
+            background: white;
+            padding: 1.5rem;
+            border-radius: 12px;
+            text-align: center;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+        }
+
+        .stat-value {
+            font-size: 2rem;
+            font-weight: 700;
+            color: #667eea;
+        }
+
+        .stat-label {
+            font-size: 0.85rem;
+            color: #718096;
+            margin-top: 0.25rem;
+        }
+
+        @media (max-width: 768px) {
+            .scanner-table {
+                font-size: 0.85rem;
+            }
+
+            .scanner-table th,
+            .scanner-table td {
+                padding: 0.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <h1 class="logo">📈 StockYatra</h1>
+            <ul class="nav-links">
+                <li><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
+                <li><a href="{{ url_for('watchlist') }}">Watchlist</a></li>
+                <li><a href="{{ url_for('news') }}">News</a></li>
+                <li><a href="{{ url_for('technical_scanner') }}" class="active">Technical Scanner</a></li>
+                <li><a href="{{ url_for('logout') }}">Logout</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container scanner-container">
+        <div class="scanner-header">
+            <h1>🔍 Technical Scanner</h1>
+            <p>Real-time technical analysis of multiple stocks</p>
+        </div>
+
+        <!-- Stats Summary -->
+        {% if results %}
+        <div class="stats-summary">
+            <div class="stat-box">
+                <div class="stat-value">{{ results|length }}</div>
+                <div class="stat-label">Stocks Analyzed</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value">
+                    {{ results|selectattr('recommendation.action', 'in', ['Strong Buy', 'Buy'])|list|length }}
+                </div>
+                <div class="stat-label">Buy Signals</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value">
+                    {{ results|selectattr('recommendation.action', 'in', ['Strong Sell', 'Sell'])|list|length }}
+                </div>
+                <div class="stat-label">Sell Signals</div>
+            </div>
+            <div class="stat-box">
+                <div class="stat-value">
+                    {{ results|selectattr('rsi_signal', 'equalto', 'Oversold')|list|length }}
+                </div>
+                <div class="stat-label">Oversold (RSI)</div>
+            </div>
+        </div>
+        {% endif %}
+
+        <!-- Results Table -->
+        <div class="scanner-table-container">
+            {% if results %}
+                <table class="scanner-table" id="scannerTable">
+                    <thead>
+                        <tr>
+                            <th onclick="sortTable(0)">Symbol</th>
+                            <th onclick="sortTable(1)">Price (₹)</th>
+                            <th onclick="sortTable(2)">Trend</th>
+                            <th onclick="sortTable(3)">RSI</th>
+                            <th onclick="sortTable(4)">RSI Signal</th>
+                            <th onclick="sortTable(5)">MACD Signal</th>
+                            <th onclick="sortTable(6)">Recommendation</th>
+                            <th onclick="sortTable(7)">Confidence</th>
+                            <th>Action</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for stock in results %}
+                        <tr>
+                            <td>
+                                <div class="stock-symbol">{{ stock.symbol }}</div>
+                            </td>
+                            <td>₹{{ "%.2f"|format(stock.price) }}</td>
+                            <td>
+                                <span class="trend-badge trend-{{ stock.trend.lower().replace(' ', '-') }}">
+                                    {{ stock.trend }}
+                                </span>
+                            </td>
+                            <td>{{ "%.1f"|format(stock.rsi) }}</td>
+                            <td>
+                                <span class="signal-badge signal-{{ stock.rsi_signal.lower() }}">
+                                    {{ stock.rsi_signal }}
+                                </span>
+                            </td>
+                            <td>
+                                <span class="signal-badge signal-{{ stock.macd_signal.lower() }}">
+                                    {{ stock.macd_signal }}
+                                </span>
+                            </td>
+                            <td>
+                                <div class="recommendation-card rec-{{ stock.recommendation.action.lower().replace(' ', '-') }}">
+                                    {{ stock.recommendation.action }}
+                                </div>
+                            </td>
+                            <td>
+                                {{ stock.recommendation.confidence }}%
+                                <div class="confidence-bar">
+                                    <div class="confidence-fill" 
+                                         style="width: {{ stock.recommendation.confidence }}%"></div>
+                                </div>
+                            </td>
+                            <td>
+                                <a href="{{ url_for('technical_analysis', stock_symbol=stock.symbol) }}" 
+                                   class="view-details-btn">
+                                    View Details
+                                </a>
+                            </td>
+                        </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            {% else %}
+                <div class="loading">
+                    <div class="loading-spinner"></div>
+                    <p>Scanning stocks... Please wait.</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2025 Stock Market Prediction System. MCA Project.</p>
+        </div>
+    </footer>
+
+    <script>
+        // Simple table sorting
+        function sortTable(columnIndex) {
+            const table = document.getElementById('scannerTable');
+            const tbody = table.querySelector('tbody');
+            const rows = Array.from(tbody.querySelectorAll('tr'));
+            
+            // Determine sort direction
+            const isAscending = tbody.dataset.sortDir !== 'asc';
+            tbody.dataset.sortDir = isAscending ? 'asc' : 'desc';
+            
+            // Sort rows
+            rows.sort((a, b) => {
+                let aValue = a.cells[columnIndex].textContent.trim();
+                let bValue = b.cells[columnIndex].textContent.trim();
+                
+                // Remove currency symbols and convert to numbers if numeric
+                aValue = aValue.replace('₹', '').replace('%', '');
+                bValue = bValue.replace('₹', '').replace('%', '');
+                
+                // Check if numeric
+                const aNum = parseFloat(aValue);
+                const bNum = parseFloat(bValue);
+                
+                if (!isNaN(aNum) && !isNaN(bNum)) {
+                    return isAscending ? aNum - bNum : bNum - aNum;
+                } else {
+                    return isAscending ? 
+                        aValue.localeCompare(bValue) : 
+                        bValue.localeCompare(aValue);
+                }
+            });
+            
+            // Re-append sorted rows
+            rows.forEach(row => tbody.appendChild(row));
+        }
+
+        // Auto-refresh every 5 minutes
+        setTimeout(() => {
+            location.reload();
+        }, 5 * 60 * 1000);
+    </script>
+</body>
+</html>

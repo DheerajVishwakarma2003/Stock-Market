@@ -1,0 +1,293 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>My Watchlist - Stock Prediction</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <h1 class="logo">📈 Stock Predictor</h1>
+            <ul class="nav-links">
+                <li><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
+                <li><a href="{{ url_for('watchlist') }}" class="active">Watchlist</a></li>
+                <li><a href="{{ url_for('news') }}">News</a></li>
+                {% if session.get('is_admin') %}
+                    <li><a href="{{ url_for('admin') }}">Admin</a></li>
+                {% endif %}
+                <li><a href="{{ url_for('profile') }}">Profile</a></li>
+                <li><a href="{{ url_for('logout') }}">Logout</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container watchlist-container">
+        <div class="watchlist-header">
+            <h1>⭐ My Watchlist</h1>
+            <p>Track your favorite stocks and get quick predictions</p>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Add Stock Form -->
+        <div class="add-stock-card">
+            <h2>➕ Add Stock to Watchlist</h2>
+            <form id="addStockForm" class="add-stock-form">
+                <div class="form-row">
+                    <div class="form-group">
+                        <input type="text" id="newStockSymbol" 
+                               placeholder="Enter stock symbol (e.g., RELIANCE.NS, TCS.NS)" 
+                               class="stock-input" required>
+                        <small>Popular: RELIANCE.NS, TCS.NS, INFY.NS, HDFCBANK.NS, ICICIBANK.NS</small>
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        <span class="btn-text">Add to Watchlist</span>
+                        <span class="btn-loading" style="display: none;">Adding...</span>
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Watchlist Stocks -->
+        <div class="watchlist-section">
+            <h2>📊 Your Stocks ({{ watchlist_stocks|length }})</h2>
+            
+            {% if watchlist_stocks %}
+                <div class="watchlist-grid">
+                    {% for stock in watchlist_stocks %}
+                        <div class="watchlist-card" id="stock-{{ stock.id }}">
+                            <div class="stock-header">
+                                <div class="stock-info">
+                                    <h3 class="stock-symbol">{{ stock.stock_symbol }}</h3>
+                                    <p class="stock-name">{{ stock.stock_name }}</p>
+                                </div>
+                                <button class="remove-btn" onclick="removeStock({{ stock.id }}, '{{ stock.stock_symbol }}')" 
+                                        title="Remove from watchlist">
+                                    ✕
+                                </button>
+                            </div>
+
+                            <div class="stock-price">
+                                {% if stock.current_price %}
+                                    <div class="price-display">
+                                        <span class="current-price">₹{{ "%.2f"|format(stock.current_price) }}</span>
+                                        <span class="price-change {% if stock.is_positive %}positive{% else %}negative{% endif %}">
+                                            {{ "%+.2f"|format(stock.change) }} ({{ "%+.2f"|format(stock.change_pct) }}%)
+                                        </span>
+                                    </div>
+                                {% else %}
+                                    <div class="price-display">
+                                        <span class="price-loading">Loading price...</span>
+                                    </div>
+                                {% endif %}
+                            </div>
+
+                            <div class="stock-actions">
+                                <form method="POST" action="{{ url_for('predict') }}" style="display: inline;">
+                                    <input type="hidden" name="stock_symbol" value="{{ stock.stock_symbol }}">
+                                    <button type="submit" class="btn btn-predict">
+                                        🔮 Quick Predict
+                                    </button>
+                                </form>
+                                
+                                <button class="btn btn-alert" onclick="showAlertModal({{ stock.id }}, '{{ stock.stock_symbol }}', {{ stock.alert_price or 'null' }})">
+                                    🔔 Set Alert
+                                </button>
+                            </div>
+
+                            {% if stock.alert_price %}
+                                <div class="alert-indicator">
+                                    Alert at: ₹{{ "%.2f"|format(stock.alert_price) }}
+                                </div>
+                            {% endif %}
+
+                            <div class="stock-meta">
+                                Added: {{ stock.added_date.strftime('%Y-%m-%d') }}
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="empty-watchlist">
+                    <div class="empty-icon">📊</div>
+                    <h3>Your watchlist is empty</h3>
+                    <p>Add stocks to start tracking your favorites!</p>
+                    <p class="suggestions">
+                        <strong>Try adding:</strong> RELIANCE.NS, TCS.NS, HDFCBANK.NS, INFY.NS
+                    </p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <!-- Price Alert Modal -->
+    <div id="alertModal" class="modal">
+        <div class="modal-content">
+            <span class="modal-close" onclick="closeAlertModal()">&times;</span>
+            <h2>🔔 Set Price Alert</h2>
+            <p id="alertStockName"></p>
+            <form id="alertForm">
+                <input type="hidden" id="alertWatchlistId">
+                <div class="form-group">
+                    <label for="alertPrice">Alert Price (₹)</label>
+                    <input type="number" id="alertPrice" step="0.01" min="0" 
+                           placeholder="Enter price" class="alert-input" required>
+                    <small>You'll be notified when price reaches this level</small>
+                </div>
+                <div class="modal-actions">
+                    <button type="submit" class="btn btn-primary">Set Alert</button>
+                    <button type="button" class="btn btn-secondary" onclick="closeAlertModal()">Cancel</button>
+                </div>
+            </form>
+        </div>
+    </div>
+
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2025 Stock Market Prediction System. MCA Project.</p>
+        </div>
+    </footer>
+
+    <script>
+        // Add stock to watchlist
+        document.getElementById('addStockForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const stockSymbol = document.getElementById('newStockSymbol').value.trim().toUpperCase();
+            const btnText = document.querySelector('.btn-text');
+            const btnLoading = document.querySelector('.btn-loading');
+            const submitBtn = e.target.querySelector('button[type="submit"]');
+            
+            if (!stockSymbol) {
+                alert('Please enter a stock symbol');
+                return;
+            }
+            
+            // Show loading state
+            submitBtn.disabled = true;
+            btnText.style.display = 'none';
+            btnLoading.style.display = 'inline';
+            
+            try {
+                const formData = new FormData();
+                formData.append('stock_symbol', stockSymbol);
+                
+                const response = await fetch('/watchlist/add', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert(data.message);
+                    window.location.reload();
+                } else {
+                    alert(data.message || 'Failed to add stock');
+                }
+            } catch (error) {
+                alert('Error adding stock: ' + error.message);
+            } finally {
+                submitBtn.disabled = false;
+                btnText.style.display = 'inline';
+                btnLoading.style.display = 'none';
+            }
+        });
+        
+        // Remove stock from watchlist
+        async function removeStock(watchlistId, stockSymbol) {
+            if (!confirm(`Remove ${stockSymbol} from watchlist?`)) {
+                return;
+            }
+            
+            try {
+                const response = await fetch(`/watchlist/remove/${watchlistId}`, {
+                    method: 'POST'
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    // Remove card with animation
+                    const card = document.getElementById(`stock-${watchlistId}`);
+                    card.style.opacity = '0';
+                    card.style.transform = 'scale(0.9)';
+                    setTimeout(() => {
+                        card.remove();
+                        
+                        // Check if watchlist is empty
+                        const grid = document.querySelector('.watchlist-grid');
+                        if (grid && grid.children.length === 0) {
+                            window.location.reload();
+                        }
+                    }, 300);
+                } else {
+                    alert(data.message || 'Failed to remove stock');
+                }
+            } catch (error) {
+                alert('Error removing stock: ' + error.message);
+            }
+        }
+        
+        // Show price alert modal
+        function showAlertModal(watchlistId, stockSymbol, currentAlert) {
+            document.getElementById('alertWatchlistId').value = watchlistId;
+            document.getElementById('alertStockName').textContent = `Set alert for ${stockSymbol}`;
+            document.getElementById('alertPrice').value = currentAlert || '';
+            document.getElementById('alertModal').style.display = 'block';
+        }
+        
+        // Close alert modal
+        function closeAlertModal() {
+            document.getElementById('alertModal').style.display = 'none';
+        }
+        
+        // Set price alert
+        document.getElementById('alertForm').addEventListener('submit', async function(e) {
+            e.preventDefault();
+            
+            const watchlistId = document.getElementById('alertWatchlistId').value;
+            const alertPrice = document.getElementById('alertPrice').value;
+            
+            try {
+                const formData = new FormData();
+                formData.append('watchlist_id', watchlistId);
+                formData.append('alert_price', alertPrice);
+                
+                const response = await fetch('/watchlist/set-alert', {
+                    method: 'POST',
+                    body: formData
+                });
+                
+                const data = await response.json();
+                
+                if (data.success) {
+                    alert(data.message);
+                    closeAlertModal();
+                    window.location.reload();
+                } else {
+                    alert(data.message || 'Failed to set alert');
+                }
+            } catch (error) {
+                alert('Error setting alert: ' + error.message);
+            }
+        });
+        
+        // Close modal when clicking outside
+        window.onclick = function(event) {
+            const modal = document.getElementById('alertModal');
+            if (event.target == modal) {
+                closeAlertModal();
+            }
+        }
+    </script>
+</body>
+</html>

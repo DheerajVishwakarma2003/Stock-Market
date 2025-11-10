@@ -1,0 +1,117 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Admin Dashboard</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <h1 class="logo">📈 StockYatra</h1>
+            <ul class="nav-links">
+                <li><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
+                <li><a href="{{ url_for('news') }}">News</a></li>
+                <li><a href="{{ url_for('admin') }}" class="active">Admin</a></li>
+                <li><a href="{{ url_for('profile') }}">Profile</a></li>
+                <li><a href="{{ url_for('logout') }}">Logout</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container admin-container">
+        <div class="admin-header">
+            <h1>🔐 Admin Dashboard</h1>
+            <p class="admin-notice">⚠️ This panel is only accessible to administrators</p>
+        </div>
+        
+        <div class="stats-grid">
+            <div class="stat-card">
+                <div class="stat-icon">👥</div>
+                <div class="stat-content">
+                    <h3>Total Users</h3>
+                    <p class="stat-number">{{ users|length }}</p>
+                </div>
+            </div>
+            <div class="stat-card">
+                <div class="stat-icon">🔮</div>
+                <div class="stat-content">
+                    <h3>Total Predictions</h3>
+                    <p class="stat-number">{{ total_predictions }}</p>
+                </div>
+            </div>
+        </div>
+
+        <div class="admin-section">
+            <h2>👥 Registered Users</h2>
+            <div class="table-responsive">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>Username</th>
+                            <th>Email</th>
+                            <th>Admin</th>
+                            <th>Registration Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for user in users %}
+                            <tr>
+                                <td>{{ user.id }}</td>
+                                <td>{{ user.username }}</td>
+                                <td>{{ user.email }}</td>
+                                <td>
+                                    {% if user.get('is_admin') %}
+                                        <span class="badge badge-admin">Yes</span>
+                                    {% else %}
+                                        <span class="badge badge-user">No</span>
+                                    {% endif %}
+                                </td>
+                                <td>{{ user.created_at.strftime('%Y-%m-%d %H:%M') }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+
+        {% if recent_predictions %}
+        <div class="admin-section">
+            <h2>📊 Recent Predictions</h2>
+            <div class="table-responsive">
+                <table class="admin-table">
+                    <thead>
+                        <tr>
+                            <th>ID</th>
+                            <th>User</th>
+                            <th>Email</th>
+                            <th>Stock Symbol</th>
+                            <th>Date</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {% for prediction in recent_predictions %}
+                            <tr>
+                                <td>{{ prediction.id }}</td>
+                                <td>{{ prediction.username }}</td>
+                                <td>{{ prediction.email }}</td>
+                                <td><strong>{{ prediction.stock_symbol }}</strong></td>
+                                <td>{{ prediction.prediction_date.strftime('%Y-%m-%d %H:%M') }}</td>
+                            </tr>
+                        {% endfor %}
+                    </tbody>
+                </table>
+            </div>
+        </div>
+        {% endif %}
+    </div>
+
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2025 Stock Market Prediction System. MCA Project.</p>
+        </div>
+    </footer>
+</body>
+</html>

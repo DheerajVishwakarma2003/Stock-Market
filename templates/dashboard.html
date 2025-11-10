@@ -1,0 +1,723 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard - Stock Prediction</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        /* Include all styles from the price widget */
+        .price-widget-section {
+            background: white;
+            border-radius: 16px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+        }
+
+        .section-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 1.5rem;
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #1a202c;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .live-indicator {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.25rem 0.75rem;
+            background: #d1fae5;
+            color: #065f46;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .live-dot {
+            width: 8px;
+            height: 8px;
+            background: #10b981;
+            border-radius: 50%;
+            animation: pulse 2s infinite;
+        }
+
+        @keyframes pulse {
+            0%, 100% { opacity: 1; transform: scale(1); }
+            50% { opacity: 0.5; transform: scale(0.9); }
+        }
+
+        .price-widget-container {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+            gap: 1.5rem;
+        }
+
+        .price-widget {
+            background: linear-gradient(135deg, #ffffff 0%, #f8f9fa 100%);
+            border-radius: 16px;
+            padding: 1.5rem;
+            box-shadow: 0 4px 20px rgba(0, 0, 0, 0.08);
+            position: relative;
+            overflow: hidden;
+            transition: all 0.3s ease;
+            border: 2px solid transparent;
+        }
+
+        .price-widget:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 8px 30px rgba(0, 0, 0, 0.12);
+        }
+
+        .price-widget.positive {
+            border-color: #10b981;
+        }
+
+        .price-widget.negative {
+            border-color: #ef4444;
+        }
+
+        .widget-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: flex-start;
+            margin-bottom: 1rem;
+        }
+
+        .stock-symbol {
+            font-size: 1.25rem;
+            font-weight: 700;
+            color: #1a202c;
+        }
+
+        .stock-name {
+            font-size: 0.85rem;
+            color: #718096;
+            margin-top: 0.25rem;
+        }
+
+        .market-status {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.25rem 0.75rem;
+            border-radius: 20px;
+            font-size: 0.75rem;
+            font-weight: 600;
+        }
+
+        .market-status.open {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .market-status.closed {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .status-dot {
+            width: 8px;
+            height: 8px;
+            border-radius: 50%;
+        }
+
+        .status-dot.open {
+            background: #10b981;
+            animation: blink 1.5s infinite;
+        }
+
+        .status-dot.closed {
+            background: #ef4444;
+        }
+
+        @keyframes blink {
+            0%, 100% { opacity: 1; }
+            50% { opacity: 0.3; }
+        }
+
+        .price-display {
+            margin: 1.5rem 0;
+        }
+
+        .current-price {
+            font-size: 2.5rem;
+            font-weight: 700;
+            color: #1a202c;
+            display: flex;
+            align-items: baseline;
+            gap: 0.5rem;
+        }
+
+        .currency-symbol {
+            font-size: 1.5rem;
+            color: #718096;
+        }
+
+        .price-change {
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+            margin-top: 0.75rem;
+        }
+
+        .change-value {
+            display: flex;
+            align-items: center;
+            gap: 0.25rem;
+            padding: 0.5rem 0.75rem;
+            border-radius: 8px;
+            font-weight: 600;
+            font-size: 0.95rem;
+        }
+
+        .change-value.positive {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .change-value.negative {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .change-arrow {
+            font-size: 1.2rem;
+        }
+
+        .mini-chart {
+            height: 80px;
+            margin: 1rem 0;
+        }
+
+        .price-stats {
+            display: grid;
+            grid-template-columns: repeat(2, 1fr);
+            gap: 0.75rem;
+            margin-top: 1rem;
+            padding-top: 1rem;
+            border-top: 2px solid #e2e8f0;
+        }
+
+        .stat-item {
+            text-align: center;
+        }
+
+        .stat-label {
+            font-size: 0.75rem;
+            color: #718096;
+            text-transform: uppercase;
+        }
+
+        .stat-value {
+            font-size: 1rem;
+            font-weight: 600;
+            color: #2d3748;
+            margin-top: 0.25rem;
+        }
+
+        .widget-actions {
+            display: grid;
+            grid-template-columns: 1fr 1fr auto;
+            gap: 0.5rem;
+            margin-top: 1rem;
+        }
+
+        .widget-btn {
+            flex: 1;
+            padding: 0.5rem;
+            border: none;
+            border-radius: 8px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .btn-predict {
+            background: #667eea;
+            color: white;
+        }
+
+        .btn-predict:hover {
+            background: #5568d3;
+        }
+
+        .btn-watchlist {
+            background: #f59e0b;
+            color: white;
+        }
+
+        .btn-watchlist:hover {
+            background: #d97706;
+        }
+
+        .btn-remove {
+            background: #ef4444;
+            color: white;
+            padding: 0.5rem 0.75rem;
+            min-width: 40px;
+        }
+
+        .btn-remove:hover {
+            background: #dc2626;
+        }
+
+        .loading-skeleton {
+            background: linear-gradient(90deg, #f0f0f0 25%, #e0e0e0 50%, #f0f0f0 75%);
+            background-size: 200% 100%;
+            animation: loading 1.5s infinite;
+            border-radius: 4px;
+        }
+
+        @keyframes loading {
+            0% { background-position: 200% 0; }
+            100% { background-position: -200% 0; }
+        }
+
+        .add-widget-btn {
+            display: inline-flex;
+            align-items: center;
+            gap: 0.5rem;
+            padding: 0.5rem 1.25rem;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 10px;
+            font-size: 0.9rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .add-widget-btn:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+        }
+
+        @media (max-width: 768px) {
+            .price-widget-container {
+                grid-template-columns: 1fr;
+            }
+
+            .current-price {
+                font-size: 2rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <h1 class="logo">📈 StockYatra</h1>
+            <ul class="nav-links">
+                <li><a href="{{ url_for('dashboard') }}" class="active">Dashboard</a></li>
+                <li><a href="{{ url_for('watchlist') }}">Watchlist</a></li>
+                <li><a href="{{ url_for('news') }}">News</a></li>
+                <li><a href="{{ url_for('technical_scanner') }}">Technical Scanner</a></li>
+                <li><a href="{{ url_for('profile') }}">Profile</a></li>
+                {% if session.get('is_admin') %}
+                    <li><a href="{{ url_for('admin') }}">Admin</a></li>
+                {% endif %}
+                <li><a href="{{ url_for('logout') }}">Logout</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container dashboard-container">
+        <div class="dashboard-header">
+            <h1>Welcome, {{ session.username }}!</h1>
+            <p>Track real-time prices and make predictions</p>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Real-Time Price Widgets Section -->
+        <section class="price-widget-section">
+            <div class="section-header">
+                <div class="section-title">
+                    📈 Real-Time Prices
+                    <span class="live-indicator">
+                        <span class="live-dot"></span>
+                        LIVE
+                    </span>
+                </div>
+                <button class="add-widget-btn" onclick="openAddStockModal()">
+                    + Add Stock
+                </button>
+            </div>
+
+            <div class="price-widget-container" id="priceWidgetContainer">
+                <!-- Price widgets will be loaded here -->
+                <div class="price-widget">
+                    <div class="loading-skeleton" style="height: 200px;"></div>
+                </div>
+                <div class="price-widget">
+                    <div class="loading-skeleton" style="height: 200px;"></div>
+                </div>
+                <div class="price-widget">
+                    <div class="loading-skeleton" style="height: 200px;"></div>
+                </div>
+            </div>
+        </section>
+
+        <!-- Prediction Form -->
+        <div class="prediction-form-card">
+            <h2>🔮 New Prediction</h2>
+            <p class="form-info">Enter Indian stock symbols from NSE (add .NS suffix) or BSE (add .BO suffix)</p>
+            <form method="POST" action="{{ url_for('predict') }}">
+                <div class="form-row">
+                    <div class="form-group">
+                        <label for="stock_symbol">Stock Symbol</label>
+                        <input type="text" id="stock_symbol" name="stock_symbol" 
+                               placeholder="e.g., RELIANCE.NS, TCS.NS, INFY.NS" 
+                               required pattern="[A-Za-z\.\-]+">
+                        <small>
+                            <strong>Popular NSE stocks:</strong> RELIANCE.NS, TCS.NS, INFY.NS, HDFCBANK.NS, ICICIBANK.NS
+                        </small>
+                    </div>
+                    <button type="submit" class="btn btn-primary">
+                        Predict Stock Price
+                    </button>
+                </div>
+            </form>
+        </div>
+
+        <!-- Prediction History -->
+        <div class="history-section">
+            <h2>📊 Prediction History</h2>
+            {% if predictions %}
+                <div class="history-grid">
+                    {% for prediction in predictions %}
+                        <div class="history-card">
+                            <div class="history-header">
+                                <h3>{{ prediction.stock_symbol }}</h3>
+                                <span class="history-date">{{ prediction.prediction_date.strftime('%Y-%m-%d %H:%M') }}</span>
+                            </div>
+                            <div class="history-body">
+                                {% if prediction.parsed_data %}
+                                    <p><strong>Best Model:</strong> {{ prediction.parsed_data.best_model }}</p>
+                                    <div class="metrics">
+                                        <span class="metric">
+                                            <strong>RMSE:</strong> 
+                                            {{ "%.4f"|format(prediction.parsed_data.metrics[prediction.parsed_data.best_model].test_rmse) }}
+                                        </span>
+                                    </div>
+                                {% endif %}
+                            </div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="empty-state">
+                    <p>No predictions yet. Make your first prediction above!</p>
+                </div>
+            {% endif %}
+        </div>
+    </div>
+
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2025 Stock Market Prediction System. MCA Project.</p>
+        </div>
+    </footer>
+
+    <script>
+        // Default stocks to display
+        const defaultStocks = ['RELIANCE.NS', 'TCS.NS', 'INFY.NS'];
+        let activeWidgets = [];
+        let updateInterval = null;
+        let miniCharts = {};
+
+        // Initialize on page load
+        document.addEventListener('DOMContentLoaded', function() {
+            loadPriceWidgets();
+            startAutoUpdate();
+        });
+
+        async function loadPriceWidgets() {
+            const container = document.getElementById('priceWidgetContainer');
+            container.innerHTML = ''; // Clear loading skeletons
+
+            // Load saved stocks or use defaults
+            const savedStocks = localStorage.getItem('dashboardStocks');
+            const stocks = savedStocks ? JSON.parse(savedStocks) : defaultStocks;
+
+            for (const symbol of stocks) {
+                await createPriceWidget(symbol);
+            }
+        }
+
+        async function createPriceWidget(symbol) {
+            if (activeWidgets.includes(symbol)) return;
+
+            const widgetId = 'widget-' + symbol.replace(/\./g, '-');
+            
+            const widgetHTML = `
+                <div class="price-widget" id="${widgetId}" data-symbol="${symbol}">
+                    <div class="widget-header">
+                        <div>
+                            <div class="stock-symbol">${symbol}</div>
+                            <div class="stock-name">Loading...</div>
+                        </div>
+                        <div class="market-status closed">
+                            <span class="status-dot closed"></span>
+                            Checking...
+                        </div>
+                    </div>
+
+                    <div class="price-display">
+                        <div class="current-price">
+                            <span class="currency-symbol">₹</span>
+                            <span class="price-value">--</span>
+                        </div>
+                        <div class="price-change">
+                            <div class="change-value positive">
+                                <span class="change-arrow">↑</span>
+                                <span>0.00</span>
+                            </div>
+                            <span>(0.00%)</span>
+                        </div>
+                    </div>
+
+                    <div class="mini-chart">
+                        <canvas id="chart-${widgetId}"></canvas>
+                    </div>
+
+                    <div class="price-stats">
+                        <div class="stat-item">
+                            <div class="stat-label">High</div>
+                            <div class="stat-value high-value">-</div>
+                        </div>
+                        <div class="stat-item">
+                            <div class="stat-label">Low</div>
+                            <div class="stat-value low-value">-</div>
+                        </div>
+                    </div>
+
+                    <div class="widget-actions">
+                        <button class="widget-btn btn-predict" onclick="quickPredict('${symbol}')">
+                            🔮 Predict
+                        </button>
+                        <button class="widget-btn btn-watchlist" onclick="addToWatchlist('${symbol}')">
+                            ⭐ Watchlist
+                        </button>
+                        <button class="widget-btn btn-remove" onclick="removeStockWidget('${symbol}')" title="Remove widget">
+                            ✕
+                        </button>
+                    </div>
+                </div>
+            `;
+
+            document.getElementById('priceWidgetContainer').insertAdjacentHTML('beforeend', widgetHTML);
+            activeWidgets.push(symbol);
+
+            // Initialize mini chart
+            initMiniChart(widgetId);
+
+            // Fetch data
+            await updateWidgetData(symbol);
+        }
+
+        function initMiniChart(widgetId) {
+            const canvas = document.getElementById('chart-' + widgetId);
+            if (!canvas) return;
+
+            const ctx = canvas.getContext('2d');
+            
+            miniCharts[widgetId] = new Chart(ctx, {
+                type: 'line',
+                data: {
+                    labels: [],
+                    datasets: [{
+                        data: [],
+                        borderColor: '#667eea',
+                        backgroundColor: 'rgba(102, 126, 234, 0.1)',
+                        borderWidth: 2,
+                        fill: true,
+                        tension: 0.4,
+                        pointRadius: 0
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: { display: false },
+                        tooltip: { enabled: false }
+                    },
+                    scales: {
+                        x: { display: false },
+                        y: { display: false }
+                    }
+                }
+            });
+        }
+
+        async function updateWidgetData(symbol) {
+            try {
+                const response = await fetch(`/api/stock-price/${symbol}`);
+                const result = await response.json();
+                
+                if (result.success) {
+                    updateWidgetUI(symbol, result.data);
+                }
+            } catch (error) {
+                console.error('Error fetching data:', error);
+            }
+        }
+
+        function updateWidgetUI(symbol, data) {
+            const widgetId = 'widget-' + symbol.replace(/\./g, '-');
+            const widget = document.getElementById(widgetId);
+            if (!widget) return;
+
+            // Update values
+            widget.querySelector('.stock-name').textContent = data.name;
+            widget.querySelector('.price-value').textContent = data.price.toFixed(2);
+
+            const isPositive = data.change >= 0;
+            const changeEl = widget.querySelector('.change-value');
+            changeEl.className = `change-value ${isPositive ? 'positive' : 'negative'}`;
+            changeEl.innerHTML = `
+                <span class="change-arrow">${isPositive ? '↑' : '↓'}</span>
+                <span>${Math.abs(data.change).toFixed(2)}</span>
+            `;
+
+            widget.querySelector('.price-change span:last-child').textContent = 
+                `(${isPositive ? '+' : ''}${data.changePercent.toFixed(2)}%)`;
+
+            widget.className = `price-widget ${isPositive ? 'positive' : 'negative'}`;
+
+            widget.querySelector('.high-value').textContent = '₹' + data.high.toFixed(2);
+            widget.querySelector('.low-value').textContent = '₹' + data.low.toFixed(2);
+
+            // Update market status
+            const statusEl = widget.querySelector('.market-status');
+            statusEl.className = `market-status ${data.isMarketOpen ? 'open' : 'closed'}`;
+            statusEl.innerHTML = `
+                <span class="status-dot ${data.isMarketOpen ? 'open' : 'closed'}"></span>
+                ${data.isMarketOpen ? 'Open' : 'Closed'}
+            `;
+
+            // Update chart
+            if (data.intradayData && miniCharts[widgetId]) {
+                const chart = miniCharts[widgetId];
+                chart.data.labels = data.intradayData.map(d => d.time);
+                chart.data.datasets[0].data = data.intradayData.map(d => d.price);
+                chart.data.datasets[0].borderColor = isPositive ? '#10b981' : '#ef4444';
+                chart.update('none');
+            }
+        }
+
+        function startAutoUpdate() {
+            // Update every 15 seconds
+            updateInterval = setInterval(() => {
+                activeWidgets.forEach(symbol => {
+                    updateWidgetData(symbol);
+                });
+            }, 15000);
+        }
+
+        function quickPredict(symbol) {
+            document.getElementById('stock_symbol').value = symbol;
+            document.querySelector('.prediction-form-card').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        async function addToWatchlist(symbol) {
+            try {
+                const formData = new FormData();
+                formData.append('stock_symbol', symbol);
+
+                const response = await fetch('/watchlist/add', {
+                    method: 'POST',
+                    body: formData
+                });
+
+                const data = await response.json();
+                alert(data.success ? `✅ ${symbol} added to watchlist!` : data.message);
+            } catch (error) {
+                alert('Error adding to watchlist');
+            }
+        }
+
+        function openAddStockModal() {
+            const symbol = prompt('Enter stock symbol (e.g., HDFCBANK.NS):');
+            if (symbol) {
+                let formatted = symbol.trim().toUpperCase();
+                if (!formatted.includes('.NS') && !formatted.includes('.BO')) {
+                    formatted += '.NS';
+                }
+                createPriceWidget(formatted);
+                saveStockPreferences();
+            }
+        }
+
+        function removeStockWidget(symbol) {
+            if (!confirm(`Remove ${symbol} from dashboard?`)) {
+                return;
+            }
+
+            const widgetId = 'widget-' + symbol.replace(/\./g, '-');
+            const widget = document.getElementById(widgetId);
+            
+            if (widget) {
+                // Animate removal
+                widget.style.transition = 'all 0.3s ease';
+                widget.style.opacity = '0';
+                widget.style.transform = 'scale(0.9)';
+                
+                setTimeout(() => {
+                    widget.remove();
+                    
+                    // Check if no widgets left
+                    const container = document.getElementById('priceWidgetContainer');
+                    if (container.children.length === 0) {
+                        container.innerHTML = '<div class="empty-state" style="grid-column: 1/-1; text-align: center; padding: 3rem;"><p style="font-size: 1.1rem; color: #718096;">No stocks added yet. Click "+ Add Stock" to start tracking prices.</p></div>';
+                    }
+                }, 300);
+            }
+
+            // Remove from active widgets array
+            activeWidgets = activeWidgets.filter(s => s !== symbol);
+            
+            // Destroy chart instance to free memory
+            if (miniCharts[widgetId]) {
+                miniCharts[widgetId].destroy();
+                delete miniCharts[widgetId];
+            }
+            
+            // Save updated preferences
+            saveStockPreferences();
+            
+            console.log(`Removed ${symbol} from dashboard`);
+        }
+
+        function saveStockPreferences() {
+            localStorage.setItem('dashboardStocks', JSON.stringify(activeWidgets));
+            console.log('Saved stocks:', activeWidgets);
+        }
+
+        // Cleanup
+        window.addEventListener('beforeunload', () => {
+            if (updateInterval) clearInterval(updateInterval);
+        });
+    </script>
+</body>
+</html>

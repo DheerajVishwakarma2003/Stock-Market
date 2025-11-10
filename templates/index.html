@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Stock Market Prediction System</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <h1 class="logo">📈 StockYatra</h1>
+            <ul class="nav-links">
+                <li><a href="{{ url_for('index') }}">Home</a></li>
+                <li><a href="{{ url_for('news') }}">News</a></li>
+                <li><a href="{{ url_for('login') }}">Login</a></li>
+                <li><a href="{{ url_for('register') }}">Register</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="hero">
+        <div class="container">
+            <h1 class="hero-title">Indian Stock Market Prediction System</h1>
+            <p class="hero-subtitle">Predict NSE & BSE stock prices using advanced Machine Learning algorithms</p>
+            <div class="hero-buttons">
+                <a href="{{ url_for('register') }}" class="btn btn-primary">Get Started</a>
+                <a href="{{ url_for('login') }}" class="btn btn-secondary">Sign In</a>
+            </div>
+        </div>
+    </div>
+
+    <div class="container">
+        <section class="features">
+            <h2 class="section-title">Features</h2>
+            <div class="feature-grid">
+                <div class="feature-card">
+                    <div class="feature-icon">🤖</div>
+                    <h3>Multiple ML Models</h3>
+                    <p>Linear Regression, Random Forest, and LSTM neural networks for accurate predictions</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">📊</div>
+                    <h3>Interactive Visualizations</h3>
+                    <p>Beautiful charts comparing actual vs predicted stock prices</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">💾</div>
+                    <h3>Prediction History</h3>
+                    <p>Track and review all your past predictions in one place</p>
+                </div>
+                <div class="feature-card">
+                    <div class="feature-icon">🔒</div>
+                    <h3>Secure & Private</h3>
+                    <p>Your data is encrypted and stored securely</p>
+                </div>
+            </div>
+        </section>
+
+        <section class="how-it-works">
+            <h2 class="section-title">How It Works</h2>
+            <div class="steps">
+                <div class="step">
+                    <div class="step-number">1</div>
+                    <h3>Register Account</h3>
+                    <p>Create your free account in seconds</p>
+                </div>
+                <div class="step">
+                    <div class="step-number">2</div>
+                    <h3>Enter Stock Symbol</h3>
+                    <p>Input NSE/BSE stock ticker (RELIANCE.NS, TCS.NS, etc.)</p>
+                </div>
+                <div class="step">
+                    <div class="step-number">3</div>
+                    <h3>Get Predictions</h3>
+                    <p>Our ML models analyze and predict future prices</p>
+                </div>
+            </div>
+        </section>
+    </div>
+
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2025 Stock Market Prediction System. MCA Project.</p>
+        </div>
+    </footer>
+</body>
+</html>

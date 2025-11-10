@@ -1,0 +1,676 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Accuracy Tracking - StockYatra</title>
+    <link rel="stylesheet" href="{{ url_for('static', filename='css/style.css') }}">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.0/dist/chart.umd.min.js"></script>
+    <style>
+        .accuracy-container {
+            max-width: 1400px;
+            margin: 2rem auto;
+            padding: 0 1rem;
+        }
+
+        .accuracy-header {
+            text-align: center;
+            margin-bottom: 3rem;
+            padding: 2rem;
+            background: linear-gradient(135deg, #10b981 0%, #059669 100%);
+            color: white;
+            border-radius: 16px;
+        }
+
+        .accuracy-header h1 {
+            margin: 0 0 0.5rem 0;
+            font-size: 2.5rem;
+        }
+
+        .stats-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 1.5rem;
+            margin-bottom: 2rem;
+        }
+
+        .stat-card {
+            background: white;
+            border-radius: 12px;
+            padding: 1.5rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+            transition: all 0.3s ease;
+        }
+
+        .stat-card:hover {
+            transform: translateY(-4px);
+            box-shadow: 0 4px 20px rgba(0,0,0,0.12);
+        }
+
+        .stat-card.highlight {
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            color: white;
+        }
+
+        .stat-label {
+            font-size: 0.9rem;
+            opacity: 0.8;
+            margin-bottom: 0.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.5rem;
+        }
+
+        .stat-value {
+            font-size: 2.5rem;
+            font-weight: 700;
+            margin-bottom: 0.25rem;
+        }
+
+        .stat-change {
+            font-size: 0.85rem;
+            opacity: 0.9;
+        }
+
+        .stat-icon {
+            font-size: 2rem;
+            opacity: 0.3;
+            position: absolute;
+            right: 1rem;
+            top: 1rem;
+        }
+
+        .accuracy-badge {
+            display: inline-block;
+            padding: 0.5rem 1rem;
+            border-radius: 20px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .accuracy-excellent {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .accuracy-good {
+            background: #dbeafe;
+            color: #1e40af;
+        }
+
+        .accuracy-fair {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .accuracy-poor {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .section {
+            background: white;
+            border-radius: 12px;
+            padding: 2rem;
+            margin-bottom: 2rem;
+            box-shadow: 0 2px 10px rgba(0,0,0,0.08);
+        }
+
+        .section-title {
+            font-size: 1.5rem;
+            font-weight: 700;
+            margin-bottom: 1.5rem;
+            display: flex;
+            align-items: center;
+            gap: 0.75rem;
+        }
+
+        .predictions-table {
+            width: 100%;
+            border-collapse: separate;
+            border-spacing: 0;
+        }
+
+        .predictions-table thead {
+            background: #f7fafc;
+        }
+
+        .predictions-table th {
+            padding: 1rem;
+            text-align: left;
+            font-weight: 600;
+            color: #4a5568;
+            border-bottom: 2px solid #e2e8f0;
+        }
+
+        .predictions-table td {
+            padding: 1rem;
+            border-bottom: 1px solid #e2e8f0;
+        }
+
+        .predictions-table tbody tr:hover {
+            background: #f7fafc;
+        }
+
+        .status-badge {
+            display: inline-block;
+            padding: 0.25rem 0.75rem;
+            border-radius: 12px;
+            font-size: 0.85rem;
+            font-weight: 600;
+        }
+
+        .status-verified {
+            background: #d1fae5;
+            color: #065f46;
+        }
+
+        .status-pending {
+            background: #fef3c7;
+            color: #92400e;
+        }
+
+        .status-expired {
+            background: #fee2e2;
+            color: #991b1b;
+        }
+
+        .verify-btn {
+            padding: 0.5rem 1rem;
+            background: #10b981;
+            color: white;
+            border: none;
+            border-radius: 6px;
+            font-size: 0.85rem;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.2s;
+        }
+
+        .verify-btn:hover {
+            background: #059669;
+            transform: translateY(-2px);
+        }
+
+        .verify-btn:disabled {
+            background: #cbd5e0;
+            cursor: not-allowed;
+            transform: none;
+        }
+
+        .chart-container {
+            height: 300px;
+            margin: 1.5rem 0;
+        }
+
+        .leaderboard {
+            display: grid;
+            gap: 1rem;
+        }
+
+        .leaderboard-item {
+            display: flex;
+            align-items: center;
+            gap: 1rem;
+            padding: 1rem;
+            background: #f7fafc;
+            border-radius: 8px;
+            transition: all 0.2s;
+        }
+
+        .leaderboard-item:hover {
+            background: #e2e8f0;
+            transform: translateX(4px);
+        }
+
+        .leaderboard-rank {
+            width: 40px;
+            height: 40px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            background: #667eea;
+            color: white;
+            border-radius: 50%;
+            font-weight: 700;
+            font-size: 1.1rem;
+        }
+
+        .leaderboard-rank.gold {
+            background: linear-gradient(135deg, #fbbf24 0%, #f59e0b 100%);
+        }
+
+        .leaderboard-rank.silver {
+            background: linear-gradient(135deg, #cbd5e0 0%, #94a3b8 100%);
+        }
+
+        .leaderboard-rank.bronze {
+            background: linear-gradient(135deg, #f97316 0%, #ea580c 100%);
+        }
+
+        .leaderboard-info {
+            flex: 1;
+        }
+
+        .leaderboard-name {
+            font-weight: 600;
+            color: #1a202c;
+            margin-bottom: 0.25rem;
+        }
+
+        .leaderboard-details {
+            font-size: 0.85rem;
+            color: #718096;
+        }
+
+        .leaderboard-score {
+            font-size: 1.5rem;
+            font-weight: 700;
+            color: #10b981;
+        }
+
+        .confidence-meter {
+            width: 100%;
+            height: 8px;
+            background: #e2e8f0;
+            border-radius: 4px;
+            overflow: hidden;
+        }
+
+        .confidence-fill {
+            height: 100%;
+            transition: width 0.3s ease;
+        }
+
+        .confidence-high {
+            background: linear-gradient(90deg, #10b981 0%, #059669 100%);
+        }
+
+        .confidence-medium {
+            background: linear-gradient(90deg, #3b82f6 0%, #2563eb 100%);
+        }
+
+        .confidence-low {
+            background: linear-gradient(90deg, #f59e0b 0%, #d97706 100%);
+        }
+
+        .empty-state {
+            text-align: center;
+            padding: 3rem;
+            color: #718096;
+        }
+
+        .empty-state-icon {
+            font-size: 4rem;
+            margin-bottom: 1rem;
+            opacity: 0.3;
+        }
+
+        .action-buttons {
+            display: flex;
+            gap: 1rem;
+            margin-bottom: 2rem;
+        }
+
+        .btn-auto-verify {
+            padding: 0.75rem 1.5rem;
+            background: #667eea;
+            color: white;
+            border: none;
+            border-radius: 8px;
+            font-weight: 600;
+            cursor: pointer;
+            transition: all 0.3s;
+        }
+
+        .btn-auto-verify:hover {
+            background: #5568d3;
+            transform: translateY(-2px);
+        }
+
+        @media (max-width: 768px) {
+            .stats-grid {
+                grid-template-columns: 1fr;
+            }
+
+            .predictions-table {
+                font-size: 0.85rem;
+            }
+
+            .predictions-table th,
+            .predictions-table td {
+                padding: 0.5rem;
+            }
+        }
+    </style>
+</head>
+<body>
+    <nav class="navbar">
+        <div class="container">
+            <h1 class="logo">📈 StockYatra</h1>
+            <ul class="nav-links">
+                <li><a href="{{ url_for('dashboard') }}">Dashboard</a></li>
+                <li><a href="{{ url_for('watchlist') }}">Watchlist</a></li>
+                <li><a href="{{ url_for('news') }}">News</a></li>
+                <li><a href="{{ url_for('accuracy') }}" class="active">Accuracy</a></li>
+                <li><a href="{{ url_for('profile') }}">Profile</a></li>
+                {% if session.get('is_admin') %}
+                    <li><a href="{{ url_for('admin') }}">Admin</a></li>
+                {% endif %}
+                <li><a href="{{ url_for('logout') }}">Logout</a></li>
+            </ul>
+        </div>
+    </nav>
+
+    <div class="container accuracy-container">
+        <div class="accuracy-header">
+            <h1>🎯 Accuracy Tracking</h1>
+            <p>Monitor your prediction performance and improve over time</p>
+        </div>
+
+        {% with messages = get_flashed_messages(with_categories=true) %}
+            {% if messages %}
+                {% for category, message in messages %}
+                    <div class="alert alert-{{ category }}">{{ message }}</div>
+                {% endfor %}
+            {% endif %}
+        {% endwith %}
+
+        <!-- Action Buttons -->
+        <div class="action-buttons">
+            <button class="btn-auto-verify" onclick="autoVerifyPredictions()">
+                🔄 Auto-Verify Eligible Predictions
+            </button>
+        </div>
+
+        <!-- Stats Overview -->
+        <div class="stats-grid">
+            <div class="stat-card highlight">
+                <div class="stat-label">
+                    <span>Success Rate</span>
+                </div>
+                <div class="stat-value">{{ "%.1f"|format(user_stats.success_rate or 0) }}%</div>
+                <div class="stat-change">Your overall accuracy</div>
+                <div class="stat-icon">🎯</div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-label">Total Predictions</div>
+                <div class="stat-value">{{ user_stats.total_predictions or 0 }}</div>
+                <div class="stat-change">{{ user_stats.verified_predictions or 0 }} verified</div>
+                <div class="stat-icon">📊</div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-label">Accurate Predictions</div>
+                <div class="stat-value">{{ user_stats.accurate_predictions or 0 }}</div>
+                <div class="stat-change">80%+ accuracy</div>
+                <div class="stat-icon">✅</div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-label">Best Accuracy</div>
+                <div class="stat-value">{{ "%.1f"|format(user_stats.best_prediction_accuracy or 0) }}%</div>
+                <div class="stat-change">Your personal best</div>
+                <div class="stat-icon">⭐</div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-label">Favorite Model</div>
+                <div class="stat-value" style="font-size: 1.2rem;">{{ user_stats.favorite_model or 'N/A' }}</div>
+                <div class="stat-change">Most used model</div>
+                <div class="stat-icon">🤖</div>
+            </div>
+
+            <div class="stat-card">
+                <div class="stat-label">Your Rank</div>
+                <div class="stat-value">#{{ user_rank }}</div>
+                <div class="stat-change">Among all users</div>
+                <div class="stat-icon">🏆</div>
+            </div>
+        </div>
+
+        <!-- Accuracy Timeline Chart -->
+        <section class="section">
+            <h2 class="section-title">📈 Accuracy Over Time</h2>
+            <div class="chart-container">
+                <canvas id="accuracyChart"></canvas>
+            </div>
+        </section>
+
+        <!-- Recent Predictions -->
+        <section class="section">
+            <h2 class="section-title">📋 Recent Predictions</h2>
+            {% if recent_predictions %}
+                <div style="overflow-x: auto;">
+                    <table class="predictions-table">
+                        <thead>
+                            <tr>
+                                <th>Stock</th>
+                                <th>Prediction Date</th>
+                                <th>Target Date</th>
+                                <th>Predicted Price</th>
+                                <th>Actual Price</th>
+                                <th>Accuracy</th>
+                                <th>Model</th>
+                                <th>Confidence</th>
+                                <th>Status</th>
+                                <th>Action</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {% for pred in recent_predictions %}
+                                <tr>
+                                    <td><strong>{{ pred.stock_symbol }}</strong></td>
+                                    <td>{{ pred.prediction_date.strftime('%Y-%m-%d') }}</td>
+                                    <td>{{ pred.target_date.strftime('%Y-%m-%d') }}</td>
+                                    <td>₹{{ "%.2f"|format(pred.predicted_price) }}</td>
+                                    <td>
+                                        {% if pred.actual_price %}
+                                            ₹{{ "%.2f"|format(pred.actual_price) }}
+                                        {% else %}
+                                            <span style="color: #a0aec0;">Pending</span>
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        {% if pred.accuracy_percentage %}
+                                            {% set accuracy = pred.accuracy_percentage %}
+                                            <span class="accuracy-badge 
+                                                {% if accuracy >= 90 %}accuracy-excellent
+                                                {% elif accuracy >= 80 %}accuracy-good
+                                                {% elif accuracy >= 70 %}accuracy-fair
+                                                {% else %}accuracy-poor{% endif %}">
+                                                {{ "%.1f"|format(accuracy) }}%
+                                            </span>
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                    <td>{{ pred.model_used }}</td>
+                                    <td>
+                                        {% if pred.confidence_score %}
+                                            <div class="confidence-meter">
+                                                <div class="confidence-fill 
+                                                    {% if pred.confidence_score >= 80 %}confidence-high
+                                                    {% elif pred.confidence_score >= 60 %}confidence-medium
+                                                    {% else %}confidence-low{% endif %}"
+                                                    style="width: {{ pred.confidence_score }}%">
+                                                </div>
+                                            </div>
+                                            <small>{{ "%.0f"|format(pred.confidence_score) }}%</small>
+                                        {% else %}
+                                            -
+                                        {% endif %}
+                                    </td>
+                                    <td>
+                                        <span class="status-badge status-{{ 'verified' if pred.is_verified else 'pending' }}">
+                                            {{ 'Verified' if pred.is_verified else 'Pending' }}
+                                        </span>
+                                    </td>
+                                    <td>
+                                        {% if not pred.is_verified %}
+                                            <button class="verify-btn" 
+                                                    onclick="verifyPrediction({{ pred.id }})"
+                                                    {% if pred.target_date > today %}disabled{% endif %}>
+                                                {% if pred.target_date > today %}
+                                                    Wait
+                                                {% else %}
+                                                    Verify
+                                                {% endif %}
+                                            </button>
+                                        {% else %}
+                                            <span style="color: #10b981;">✓</span>
+                                        {% endif %}
+                                    </td>
+                                </tr>
+                            {% endfor %}
+                        </tbody>
+                    </table>
+                </div>
+            {% else %}
+                <div class="empty-state">
+                    <div class="empty-state-icon">📊</div>
+                    <h3>No predictions yet</h3>
+                    <p>Start making predictions to track your accuracy!</p>
+                    <a href="{{ url_for('dashboard') }}" class="btn-auto-verify">Make First Prediction</a>
+                </div>
+            {% endif %}
+        </section>
+
+        <!-- Model Performance -->
+        <section class="section">
+            <h2 class="section-title">🤖 Model Performance</h2>
+            {% if model_performance %}
+                <div class="leaderboard">
+                    {% for model in model_performance %}
+                        <div class="leaderboard-item">
+                            <div class="leaderboard-rank">{{ loop.index }}</div>
+                            <div class="leaderboard-info">
+                                <div class="leaderboard-name">{{ model.model_name }} - {{ model.stock_symbol }}</div>
+                                <div class="leaderboard-details">
+                                    {{ model.verified_predictions }}/{{ model.total_predictions }} verified
+                                    | Avg Error: ₹{{ "%.2f"|format(model.average_error or 0) }}
+                                </div>
+                            </div>
+                            <div class="leaderboard-score">{{ "%.1f"|format(model.average_accuracy or 0) }}%</div>
+                        </div>
+                    {% endfor %}
+                </div>
+            {% else %}
+                <div class="empty-state">
+                    <p>No model performance data yet</p>
+                </div>
+            {% endif %}
+        </section>
+    </div>
+
+    <footer class="footer">
+        <div class="container">
+            <p>&copy; 2025 Stock Market Prediction System. MCA Project.</p>
+        </div>
+    </footer>
+
+    <script>
+        // Initialize accuracy chart
+        async function loadAccuracyChart() {
+            try {
+                const response = await fetch('/api/accuracy/stats');
+                const result = await response.json();
+                
+                if (result.success && result.data.timeline.length > 0) {
+                    const timeline = result.data.timeline.reverse();
+                    const labels = timeline.map(d => d.date);
+                    const data = timeline.map(d => d.accuracy);
+
+                    const ctx = document.getElementById('accuracyChart').getContext('2d');
+                    new Chart(ctx, {
+                        type: 'line',
+                        data: {
+                            labels: labels,
+                            datasets: [{
+                                label: 'Accuracy (%)',
+                                data: data,
+                                borderColor: '#10b981',
+                                backgroundColor: 'rgba(16, 185, 129, 0.1)',
+                                borderWidth: 3,
+                                fill: true,
+                                tension: 0.4
+                            }]
+                        },
+                        options: {
+                            responsive: true,
+                            maintainAspectRatio: false,
+                            plugins: {
+                                legend: {
+                                    display: false
+                                }
+                            },
+                            scales: {
+                                y: {
+                                    beginAtZero: true,
+                                    max: 100,
+                                    ticks: {
+                                        callback: function(value) {
+                                            return value + '%';
+                                        }
+                                    }
+                                }
+                            }
+                        }
+                    });
+                }
+            } catch (error) {
+                console.error('Error loading chart:', error);
+            }
+        }
+
+        // Verify single prediction
+        async function verifyPrediction(predictionId) {
+            if (!confirm('Verify this prediction now?')) return;
+
+            try {
+                const response = await fetch(`/accuracy/verify/${predictionId}`);
+                const result = await response.json();
+
+                if (result.success) {
+                    alert(`✅ Verified!\n\nPredicted: ₹${result.data.predicted_price.toFixed(2)}\nActual: ₹${result.data.actual_price.toFixed(2)}\nAccuracy: ${result.data.accuracy.toFixed(2)}%`);
+                    location.reload();
+                } else {
+                    alert('❌ ' + result.message);
+                }
+            } catch (error) {
+                alert('Error verifying prediction');
+            }
+        }
+
+        // Auto-verify all eligible predictions
+        async function autoVerifyPredictions() {
+            if (!confirm('Automatically verify all eligible predictions?')) return;
+
+            const btn = event.target;
+            btn.disabled = true;
+            btn.textContent = '⏳ Verifying...';
+
+            try {
+                const response = await fetch('/accuracy/auto-verify');
+                const result = await response.json();
+
+                if (result.success) {
+                    alert(`✅ Verified ${result.count} predictions!`);
+                    location.reload();
+                } else {
+                    alert('❌ ' + result.message);
+                }
+            } catch (error) {
+                alert('Error during auto-verification');
+            } finally {
+                btn.disabled = false;
+                btn.textContent = '🔄 Auto-Verify Eligible Predictions';
+            }
+        }
+
+        // Load chart on page load
+        document.addEventListener('DOMContentLoaded', loadAccuracyChart);
+    </script>
+</body>
+</html>
